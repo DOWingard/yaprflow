@@ -2,6 +2,7 @@
 name = "yaprflow"
 version = "0.1.0"
 description = "Hold a hotkey, speak, and have the words pasted into the focused coding-agent terminal"
+license = "MIT"
 requires-python = ">=3.12"
 dependencies = [
     "evdev>=1.9; sys_platform == 'linux'",

@@ -136,3 +136,7 @@ uv run pytest
 
 The tests cover the chord logic for both input backends: pynput's dummy backend lets the
 macOS/Windows key mapping run on any platform.
+
+## License
+
+MIT, see [LICENSE](LICENSE).
