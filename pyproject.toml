@@ -1,0 +1,23 @@
+[project]
+name = "yaprflow"
+version = "0.1.0"
+description = "Hold a hotkey, speak, and have the words pasted into the focused coding-agent terminal"
+requires-python = ">=3.12"
+dependencies = [
+    "evdev>=1.9; sys_platform == 'linux'",
+    "faster-whisper>=1.2.1",
+    "numpy>=2.0",
+    "sounddevice>=0.5",
+]
+
+[project.scripts]
+yaprflow = "yaprflow.__main__:main"
+
+[dependency-groups]
+dev = [
+    "pytest>=8",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
