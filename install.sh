@@ -22,14 +22,17 @@ if ! .venv/bin/python -c "import sounddevice" 2>/dev/null; then
   exit 1
 fi
 
+# A lingering user manager survives logout and keeps its old groups, so only a reboot refreshes them.
+relogin="log out and back in"
+[[ $(loginctl show-user "$USER" -p Linger --value 2>/dev/null) == yes ]] && relogin="reboot (lingering is enabled, so logging out is not enough)"
 if ! id -nG | tr ' ' '\n' | grep -qx input; then
   if getent group input | cut -d: -f4 | tr ',' '\n' | grep -qx "$USER"; then
-    echo "You are in the input group but this session predates it: log out and back in." >&2
+    echo "You are in the input group but this session predates it: $relogin." >&2
   else
     echo "Reading the hotkey needs the input group:" >&2
-    echo "  sudo usermod -aG input $USER    # then log out and back in" >&2
+    echo "  sudo usermod -aG input $USER    # then $relogin" >&2
   fi
-  echo "The service is installed anyway and will start working after you log in again." >&2
+  echo "The service is installed anyway and will start working after that." >&2
 fi
 
 mkdir -p ~/.config/systemd/user ~/.config/yaprflow

@@ -38,7 +38,9 @@ into the Hugging Face cache.
 - Linux on Wayland or X11. macOS and Windows are not supported yet: recording and transcription
   are portable, but the hotkey and keystroke injection use Linux evdev.
 - Membership of the `input` group, to read the keyboards:
-  `sudo usermod -aG input $USER`, then log out and back in. Be aware that any program running as
+  `sudo usermod -aG input $USER`, then log out and back in. If lingering is enabled
+  (`loginctl show-user $USER -p Linger`), reboot instead: the user service manager survives logout
+  and keeps its old groups. Be aware that any program running as
   your user can then read every keystroke.
 - Write access to `/dev/uinput`. Most desktops grant it to the logged-in user through a seat ACL,
   and members of `input` often have it too. Check with `ls -l /dev/uinput` and `getfacl /dev/uinput`.
