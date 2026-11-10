@@ -1,5 +1,7 @@
 import json
 import logging
+import logging.handlers
+import os
 import sys
 import traceback
 from datetime import datetime, timezone
@@ -20,8 +22,20 @@ class JsonFormatter(logging.Formatter):
         return json.dumps(entry, default=str)
 
 
+def _handler() -> logging.Handler:
+    """stderr normally; a rotating file when YAPRFLOW_LOG_FILE is set or there is no stderr (pythonw)."""
+    path = os.environ.get("YAPRFLOW_LOG_FILE")
+    if not path and sys.stderr is None:
+        path = os.path.join(os.environ.get("LOCALAPPDATA") or os.path.expanduser("~"), "yaprflow", "yaprflow.log")
+    if not path:
+        return logging.StreamHandler(sys.stderr)
+    path = os.path.expanduser(path)
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    return logging.handlers.RotatingFileHandler(path, maxBytes=1_000_000, backupCount=2, encoding="utf-8")
+
+
 def setup(level: str) -> None:
-    handler = logging.StreamHandler(sys.stderr)
+    handler = _handler()
     handler.setFormatter(JsonFormatter())
     root = logging.getLogger()
     root.handlers[:] = [handler]
