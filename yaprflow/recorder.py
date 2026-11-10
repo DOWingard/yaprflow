@@ -1,5 +1,7 @@
 """Microphone capture held entirely in memory; no audio is ever written to a file."""
 
+import os
+import subprocess
 import threading
 import time
 
@@ -29,10 +31,50 @@ def check_available() -> None:
         raise RecorderError(f"PortAudio is not installed ({_IMPORT_ERROR}); install the portaudio package")
 
 
-def _device(spec: str) -> int | str | None:
-    if not spec:
+def _pactl(*args: str) -> str | None:
+    try:
+        out = subprocess.run(["pactl", *args], capture_output=True, text=True, timeout=3)
+    except (OSError, subprocess.SubprocessError) as exc:
+        _log.debug("pactl unavailable", args=list(args), error=str(exc))
         return None
-    return int(spec) if spec.isdigit() else spec
+    return out.stdout if out.returncode == 0 else None
+
+
+def _pipewire_sources() -> list[str]:
+    out = _pactl("list", "sources", "short") or ""
+    return [line.split("\t")[1] for line in out.splitlines() if line.count("\t") >= 1]
+
+
+def resolve_device(spec: str) -> int | str | None:
+    """Map YAPRFLOW_AUDIO_DEVICE to a PortAudio device; None follows the system default input.
+
+    Accepts a PipeWire/PulseAudio source name (as listed by `pactl list sources short`), a
+    PortAudio device index, or a PortAudio device name.
+    """
+    if not spec:
+        # ALSA's "default" device is routed by PipeWire to whatever source is the default at the
+        # moment the stream opens, so a change of default applies from the next press.
+        default = (_pactl("get-default-source") or "").strip()
+        _log.info("recording from the system default input", current_default=default or "unknown")
+        return None
+    if spec.isdigit():
+        index = int(spec)
+    elif spec in _pipewire_sources():
+        # The ALSA "pipewire" device honours PIPEWIRE_NODE, which pins the stream to one source.
+        os.environ["PIPEWIRE_NODE"] = spec
+        index = next((i for i, d in enumerate(sd.query_devices()) if d["name"] == "pipewire"), None)
+        if index is None:
+            raise RecorderError(f"{spec!r} is a PipeWire source, but PortAudio has no 'pipewire' device; "
+                                "install pipewire-alsa")
+    else:
+        index = spec
+    try:
+        info = sd.query_devices(index, "input")
+    except ValueError as exc:
+        raise RecorderError(f"YAPRFLOW_AUDIO_DEVICE={spec!r} is not a usable input ({exc}); list sources with "
+                            "`pactl list sources short`") from None
+    _log.info("recording from configured input", requested=spec, device=info["name"])
+    return index
 
 
 class Recorder:
@@ -43,7 +85,7 @@ class Recorder:
     """
 
     def __init__(self, device: str) -> None:
-        self._device = _device(device)
+        self._device = resolve_device(device)
         self._stream = None
         self._chunks: list[np.ndarray] = []
         self._rate = SAMPLE_RATE

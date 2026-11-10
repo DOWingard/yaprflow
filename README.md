@@ -74,7 +74,7 @@ Put overrides in `~/.config/yaprflow/env` (`KEY=value` lines), then
 | `YAPRFLOW_HOTKEY` | `ctrl+super` | Chord to hold. Use modifiers (`ctrl`, `shift`, `alt`, `super`), which match either side, or evdev key names such as `f9`, `rightalt` or `KEY_PAUSE` |
 | `YAPRFLOW_PASTE_KEYS` | `ctrl+shift+v` | Keystroke that pastes in your terminal, e.g. `ctrl+v` for terminals that use it, or `shift+insert` |
 | `YAPRFLOW_SUBMIT` | `0` | `1` presses Enter after pasting |
-| `YAPRFLOW_AUDIO_DEVICE` | system default input | PortAudio device name (substring) or index; list them with `uv run python -m sounddevice` |
+| `YAPRFLOW_AUDIO_DEVICE` | system default input | A PipeWire source name from `pactl list sources short` (needs pipewire-alsa). A PortAudio index or name also works, but raw `hw:` devices disappear from PortAudio while PipeWire holds the card open, so source names are more reliable. Unset follows the desktop's default input, and a change of default applies from the next press |
 | `YAPRFLOW_WHISPER_MODEL` | `small.en` | Any faster-whisper model (`base.en` is faster, `medium.en` more accurate, `small` for other languages) |
 | `YAPRFLOW_MIN_SECONDS` | `0.5` | Shorter holds are discarded |
 | `YAPRFLOW_NOTIFY` | `1` | `0` turns off desktop notifications |
