@@ -1,9 +1,10 @@
 import os
-import shutil
 import sys
 from dataclasses import dataclass
+from pathlib import Path
 
 from . import log
+from .backends import DEFAULT_PASTE_KEYS
 
 _log = log.get("config")
 
@@ -21,8 +22,36 @@ class Config:
     whisper_model: str
     min_seconds: float
     notify: bool
-    clipboard: str  # "wayland" or "x11"
     log_level: str
+
+
+def config_file() -> Path:
+    if sys.platform == "win32":
+        base = Path(os.environ.get("APPDATA") or Path.home() / "AppData" / "Roaming")
+    else:
+        base = Path(os.environ.get("XDG_CONFIG_HOME") or Path.home() / ".config")
+    return base / "yaprflow" / "env"
+
+
+def load_env_file(path: Path) -> list[str]:
+    """Apply KEY=value lines from path; variables already set in the environment win."""
+    if not path.is_file():
+        return []
+    applied = []
+    for n, raw in enumerate(path.read_text(encoding="utf-8").splitlines(), 1):
+        line = raw.strip()
+        if not line or line.startswith("#"):
+            continue
+        key, sep, value = line.partition("=")
+        key, value = key.strip().removeprefix("export ").strip(), value.strip()
+        if not sep or not key:
+            raise ConfigError(f"{path}:{n}: expected KEY=value")
+        if len(value) >= 2 and value[0] == value[-1] and value[0] in "'\"":
+            value = value[1:-1]
+        if key not in os.environ:
+            os.environ[key] = value
+            applied.append(key)
+    return applied
 
 
 def _bool(name: str, default: str) -> bool:
@@ -40,39 +69,20 @@ def _float(name: str, default: str) -> float:
         raise ConfigError(f"{name} must be a number, got {raw!r}") from None
 
 
-def _clipboard() -> str:
-    if os.environ.get("WAYLAND_DISPLAY"):
-        backend, tools = "wayland", ("wl-copy", "wl-paste")
-    elif os.environ.get("DISPLAY"):
-        backend, tools = "x11", ("xclip",)
-    else:
-        raise ConfigError("neither WAYLAND_DISPLAY nor DISPLAY is set; yaprflow needs a graphical session")
-    for tool in tools:
-        if shutil.which(tool) is None:
-            raise ConfigError(f"required executable {tool!r} is not on PATH (needed for the {backend} clipboard)")
-    return backend
-
-
 def load() -> Config:
-    if sys.platform != "linux":
-        # Recording and transcription are portable; the hotkey and keystroke injection use Linux evdev.
-        raise ConfigError(f"platform {sys.platform!r} is not supported yet; yaprflow currently runs on Linux only")
-
-    notify = _bool("YAPRFLOW_NOTIFY", "1")
-    if notify and shutil.which("notify-send") is None:
-        _log.warning("notify-send is not on PATH; desktop notifications are disabled")
-        notify = False
-
+    path = config_file()
+    applied = load_env_file(path)
+    if applied:
+        _log.info("read config file", path=str(path), keys=applied)
     cfg = Config(
         hotkey=os.environ.get("YAPRFLOW_HOTKEY", "ctrl+super"),
-        paste_keys=os.environ.get("YAPRFLOW_PASTE_KEYS", "ctrl+shift+v"),
+        paste_keys=os.environ.get("YAPRFLOW_PASTE_KEYS", DEFAULT_PASTE_KEYS.get(sys.platform, "ctrl+v")),
         submit=_bool("YAPRFLOW_SUBMIT", "0"),
         audio_device=os.environ.get("YAPRFLOW_AUDIO_DEVICE", ""),
         whisper_model=os.environ.get("YAPRFLOW_WHISPER_MODEL", "small.en"),
         min_seconds=_float("YAPRFLOW_MIN_SECONDS", "0.5"),
-        notify=notify,
-        clipboard=_clipboard(),
+        notify=_bool("YAPRFLOW_NOTIFY", "1"),
         log_level=os.environ.get("YAPRFLOW_LOG_LEVEL", "info"),
     )
-    _log.info("configuration loaded", **{k: str(v) for k, v in cfg.__dict__.items()})
+    _log.info("configuration loaded", platform=sys.platform, **{k: str(v) for k, v in cfg.__dict__.items()})
     return cfg
