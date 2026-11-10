@@ -2,6 +2,7 @@
 
 import os
 import subprocess
+import sys
 import threading
 import time
 
@@ -28,7 +29,7 @@ class RecorderError(Exception):
 
 def check_available() -> None:
     if sd is None:
-        raise RecorderError(f"PortAudio is not installed ({_IMPORT_ERROR}); install the portaudio package")
+        raise RecorderError(f"PortAudio is not installed ({_IMPORT_ERROR}); install the PortAudio library (e.g. portaudio or libportaudio2)")
 
 
 def _pactl(*args: str) -> str | None:
@@ -48,18 +49,18 @@ def _pipewire_sources() -> list[str]:
 def resolve_device(spec: str) -> int | str | None:
     """Map YAPRFLOW_AUDIO_DEVICE to a PortAudio device; None follows the system default input.
 
-    Accepts a PipeWire/PulseAudio source name (as listed by `pactl list sources short`), a
-    PortAudio device index, or a PortAudio device name.
+    Accepts a PortAudio device index or name on every platform, and on Linux also a PipeWire
+    source name as listed by `pactl list sources short`.
     """
     if not spec:
         # ALSA's "default" device is routed by PipeWire to whatever source is the default at the
         # moment the stream opens, so a change of default applies from the next press.
-        default = (_pactl("get-default-source") or "").strip()
+        default = (_pactl("get-default-source") or "").strip() if sys.platform == "linux" else ""
         _log.info("recording from the system default input", current_default=default or "unknown")
         return None
     if spec.isdigit():
         index = int(spec)
-    elif spec in _pipewire_sources():
+    elif sys.platform == "linux" and spec in _pipewire_sources():
         # The ALSA "pipewire" device honours PIPEWIRE_NODE, which pins the stream to one source.
         os.environ["PIPEWIRE_NODE"] = spec
         index = next((i for i, d in enumerate(sd.query_devices()) if d["name"] == "pipewire"), None)
@@ -71,8 +72,9 @@ def resolve_device(spec: str) -> int | str | None:
     try:
         info = sd.query_devices(index, "input")
     except ValueError as exc:
-        raise RecorderError(f"YAPRFLOW_AUDIO_DEVICE={spec!r} is not a usable input ({exc}); list sources with "
-                            "`pactl list sources short`") from None
+        listing = "`pactl list sources short` or " if sys.platform == "linux" else ""
+        raise RecorderError(f"YAPRFLOW_AUDIO_DEVICE={spec!r} is not a usable input ({exc}); list inputs with "
+                            f"{listing}`python -m sounddevice`") from None
     _log.info("recording from configured input", requested=spec, device=info["name"])
     return index
 

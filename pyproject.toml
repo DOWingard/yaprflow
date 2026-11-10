@@ -8,14 +8,19 @@ dependencies = [
     "faster-whisper>=1.2.1",
     "numpy>=2.0",
     "sounddevice>=0.5",
+    "pynput>=1.8; sys_platform == 'darwin' or sys_platform == 'win32'",
+    "pyperclip>=1.9; sys_platform == 'darwin' or sys_platform == 'win32'",
 ]
 
 [project.scripts]
 yaprflow = "yaprflow.__main__:main"
 
 [dependency-groups]
+# pynput and pyperclip let the macOS/Windows key mapping be tested on any platform.
 dev = [
     "pytest>=8",
+    "pynput>=1.8",
+    "pyperclip>=1.9",
 ]
 
 [build-system]
