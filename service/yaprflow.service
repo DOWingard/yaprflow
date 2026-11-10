@@ -6,7 +6,6 @@ PartOf=graphical-session.target
 [Service]
 ExecStart=@ROOT@/.venv/bin/python -m yaprflow
 WorkingDirectory=@ROOT@
-EnvironmentFile=-%h/.config/yaprflow/env
 Environment=PATH=%h/.local/bin:/usr/local/bin:/usr/bin:/bin
 Environment=PYTHONUNBUFFERED=1
 Restart=on-failure

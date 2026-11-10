@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>dev.yaprflow</string>
+    <key>ProgramArguments</key>
+    <array>
+        <string>@ROOT@/.venv/bin/python</string>
+        <string>-m</string>
+        <string>yaprflow</string>
+    </array>
+    <key>WorkingDirectory</key>
+    <string>@ROOT@</string>
+    <key>EnvironmentVariables</key>
+    <dict>
+        <key>YAPRFLOW_LOG_FILE</key>
+        <string>@HOME@/Library/Logs/yaprflow.log</string>
+        <key>PATH</key>
+        <string>/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin</string>
+    </dict>
+    <key>RunAtLoad</key>
+    <true/>
+    <!-- Restart after a crash, but not after a startup failure that would only repeat. -->
+    <key>KeepAlive</key>
+    <dict>
+        <key>Crashed</key>
+        <true/>
+    </dict>
+    <key>ProcessType</key>
+    <string>Interactive</string>
+</dict>
+</plist>
